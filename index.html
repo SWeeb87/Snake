@@ -16,7 +16,7 @@
           <div id="unity-progress-bar-full"></div>
         </div>
       </div>
-      <div id="unity-warning"> </div>
+      <div id="unity-warning"></div>
       <div id="unity-footer">
         <div id="unity-logo-title-footer"></div>
         <div id="unity-fullscreen-button"></div>
@@ -24,77 +24,90 @@
       </div>
     </div>
     <script>
-async function fetchWasmParts(baseUrl, numParts) {
-  const parts = [];
-  for (let i = 0; i < numParts; i++) {
-    const response = await fetch(`${baseUrl}/Snake Build.wasm.part${i}`);
-    if (!response.ok) {
-      throw new Error(`Errore nel caricamento della parte ${i}: ${response.statusText}`);
-    }
-    const buffer = await response.arrayBuffer();
-    parts.push(buffer);
-  }
-
-  // Crea un array finale per contenere tutti i dati
-  const totalLength = parts.reduce((sum, part) => sum + part.byteLength, 0);
-  const combinedArray = new Uint8Array(totalLength);
-
-  let offset = 0;
-  for (const part of parts) {
-    combinedArray.set(new Uint8Array(part), offset);
-    offset += part.byteLength;
-  }
-
-  return combinedArray;
-}
-
-
       async function loadWasm() {
-        try {
-          const wasmParts = await fetchWasmParts('Build', 2); // Modifica 3 con il numero effettivo di parti
-          const wasmBlob = new Blob([wasmParts], { type: 'application/wasm' });
-          const wasmUrl = URL.createObjectURL(wasmBlob);
-
-          var canvas = document.querySelector("#unity-canvas");
-          var buildUrl = "Build";
-          var loaderUrl = buildUrl + "/Snake Build.loader.js";
-          var config = {
-            arguments: [],
-            dataUrl: buildUrl + "/Snake Build.data.gz",
-            frameworkUrl: buildUrl + "/Snake Build.framework.js.gz",
-            codeUrl: wasmUrl,
-            streamingAssetsUrl: "StreamingAssets",
-            companyName: "SWeeb",
-            productName: "Snake",
-            productVersion: "1.0",
-            showBanner: unityShowBanner,
-          };
-
-          document.querySelector("#unity-loading-bar").style.display = "block";
-
-          var script = document.createElement("script");
-          script.src = loaderUrl;
-          script.onload = () => {
-            createUnityInstance(canvas, config, (progress) => {
-              document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-            }).then((unityInstance) => {
-              document.querySelector("#unity-loading-bar").style.display = "none";
-              document.querySelector("#unity-fullscreen-button").onclick = () => {
-                unityInstance.SetFullscreen(1);
-              };
-            }).catch((message) => {
-              alert(message);
-            });
-          };
-
-          document.body.appendChild(script);
-        } catch (error) {
-          console.error('Errore durante il caricamento del file .wasm:', error);
+        const chunkCount = 2;  // Modifica questo valore con il numero di parti
+        let wasmParts = [];
+        
+        for (let i = 0; i < chunkCount; i++) {
+          const response = await fetch(`Build/Snake Build.wasm.part${i}`);
+          if (!response.ok) {
+            throw new Error(`Errore durante il caricamento della parte ${i}`);
+          }
+          const chunk = await response.arrayBuffer();
+          wasmParts.push(new Uint8Array(chunk));
         }
+
+        // Combina tutte le parti in un'unica Uint8Array
+        let totalSize = wasmParts.reduce((sum, part) => sum + part.length, 0);
+        let combinedWasm = new Uint8Array(totalSize);
+        let offset = 0;
+        for (let part of wasmParts) {
+          combinedWasm.set(part, offset);
+          offset += part.length;
+        }
+
+        // Compila il modulo WebAssembly
+        const wasmModule = await WebAssembly.compile(combinedWasm);
+        const wasmInstance = await WebAssembly.instantiate(wasmModule);
+        
+        return wasmInstance;
       }
 
-      // Carica il gioco
-      loadWasm();
+      var canvas = document.querySelector("#unity-canvas");
+      var config = {
+        arguments: [],
+        dataUrl: "Build/Snake Build.data.gz",
+        frameworkUrl: "Build/Snake Build.framework.js.gz",
+        codeUrl: "Build/Snake Build.wasm",  // Placeholder; verrà sostituito
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "SWeeb",
+        productName: "Snake",
+        productVersion: "1.0",
+        showBanner: unityShowBanner,
+      };
+
+      document.querySelector("#unity-loading-bar").style.display = "block";
+
+      loadWasm().then((wasmInstance) => {
+        config.codeUrl = wasmInstance;  // Utilizza l'istanza del modulo compilato
+        var script = document.createElement("script");
+        script.src = "Build/Snake Build.loader.js";
+        script.onload = () => {
+          createUnityInstance(canvas, config, (progress) => {
+            document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+          }).then((unityInstance) => {
+            document.querySelector("#unity-loading-bar").style.display = "none";
+            document.querySelector("#unity-fullscreen-button").onclick = () => {
+              unityInstance.SetFullscreen(1);
+            };
+          }).catch((message) => {
+            alert(message);
+          });
+        };
+        document.body.appendChild(script);
+      }).catch((error) => {
+        console.error("Errore durante il caricamento del file .wasm:", error);
+        unityShowBanner(`Errore: ${error.message}`, 'error');
+      });
+
+      function unityShowBanner(msg, type) {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
     </script>
   </body>
 </html>

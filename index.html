@@ -1,125 +1,72 @@
 <!DOCTYPE html>
-<html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | Snake</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-  </head>
-  <body>
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
-        </div>
-      </div>
-      <div id="unity-warning"></div>
-      <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Snake</div>
-      </div>
-    </div>
-    <script>
-async function loadWasm() {
-  const chunkCount = 2;  // Modifica questo valore con il numero di parti
-  let wasmParts = [];
-  
-  for (let i = 0; i < chunkCount; i++) {
-    const response = await fetch(`Build/Snake Build.wasm.part${i}`);
-    if (!response.ok) {
-      throw new Error(`Errore durante il caricamento della parte ${i}`);
-    }
-    const chunk = await response.arrayBuffer();
-    wasmParts.push(new Uint8Array(chunk));
-  }
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+</head>
+<body>
+    <script type="module">
+        import { WASI } from 'https://cdn.jsdelivr.net/npm/wasi@latest/dist/wasi.min.js';
 
-  // Combina tutte le parti in un'unica Uint8Array
-  let totalSize = wasmParts.reduce((sum, part) => sum + part.length, 0);
-  let combinedWasm = new Uint8Array(totalSize);
-  let offset = 0;
-  for (let part of wasmParts) {
-    combinedWasm.set(part, offset);
-    offset += part.length;
-  }
+        async function loadWasm() {
+            const chunkCount = 3;  // Modifica questo valore con il numero di parti
+            let wasmParts = [];
+            
+            // Carica ciascuna parte del file .wasm
+            for (let i = 0; i < chunkCount; i++) {
+                const response = await fetch(`Build/Snake Build.wasm.part${i}`);
+                if (!response.ok) {
+                    throw new Error(`Errore durante il caricamento della parte ${i}`);
+                }
+                const chunk = await response.arrayBuffer();
+                wasmParts.push(new Uint8Array(chunk));
+            }
 
-  // Definisci l'oggetto di importazione
-  const imports = {
-    env: {
-      // Aggiungi qui le importazioni necessarie per il tuo modulo, ad esempio:
-      memory: new WebAssembly.Memory({ initial: 256, maximum: 256 }),
-      table: new WebAssembly.Table({ initial: 0, element: 'anyfunc' }),
-      // Altre funzioni richieste dal modulo possono essere aggiunte qui
-    }
-  };
+            // Combina tutte le parti in un'unica Uint8Array
+            let totalSize = wasmParts.reduce((sum, part) => sum + part.length, 0);
+            let combinedWasm = new Uint8Array(totalSize);
+            let offset = 0;
+            for (let part of wasmParts) {
+                combinedWasm.set(part, offset);
+                offset += part.length;
+            }
 
-  // Compila il modulo WebAssembly
-  const wasmModule = await WebAssembly.compile(combinedWasm);
-  // Crea l'istanza del modulo WebAssembly con le importazioni
-  const wasmInstance = await WebAssembly.instantiate(wasmModule, imports);
-  
-  return wasmInstance;
-}
+            // Crea un'istanza di WASI
+            const wasi = new WASI({
+                args: [],
+                env: {},
+                stdin: process.stdin,
+                stdout: process.stdout,
+                stderr: process.stderr,
+            });
 
-
-      var canvas = document.querySelector("#unity-canvas");
-      var config = {
-        arguments: [],
-        dataUrl: "Build/Snake Build.data.gz",
-        frameworkUrl: "Build/Snake Build.framework.js.gz",
-        codeUrl: "Build/Snake Build.wasm",  // Placeholder; verrà sostituito
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "SWeeb",
-        productName: "Snake",
-        productVersion: "1.0",
-        showBanner: unityShowBanner,
-      };
-
-      document.querySelector("#unity-loading-bar").style.display = "block";
-
-      loadWasm().then((wasmInstance) => {
-        config.codeUrl = wasmInstance;  // Utilizza l'istanza del modulo compilato
-        var script = document.createElement("script");
-        script.src = "Build/Snake Build.loader.js";
-        script.onload = () => {
-          createUnityInstance(canvas, config, (progress) => {
-            document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-          }).then((unityInstance) => {
-            document.querySelector("#unity-loading-bar").style.display = "none";
-            document.querySelector("#unity-fullscreen-button").onclick = () => {
-              unityInstance.SetFullscreen(1);
+            // Crea l'oggetto di importazione con WASI
+            const imports = {
+                wasi_snapshot_preview1: wasi.wasiImport,
+                env: {
+                    memory: new WebAssembly.Memory({ initial: 256, maximum: 256 }),
+                    table: new WebAssembly.Table({ initial: 0, element: 'anyfunc' }),
+                }
             };
-          }).catch((message) => {
-            alert(message);
-          });
-        };
-        document.body.appendChild(script);
-      }).catch((error) => {
-        console.error("Errore durante il caricamento del file .wasm:", error);
-        unityShowBanner(`Errore: ${error.message}`, 'error');
-      });
 
-      function unityShowBanner(msg, type) {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+            // Compila e istanzia il modulo WebAssembly
+            const wasmModule = await WebAssembly.compile(combinedWasm);
+            const wasmInstance = await WebAssembly.instantiate(wasmModule, imports);
+
+            // Avvia WASI
+            wasi.start(wasmInstance);
+
+            return wasmInstance;
         }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
-      }
+
+        // Carica e inizializza il modulo WebAssembly
+        loadWasm().then((instance) => {
+            console.log("Modulo WebAssembly caricato con successo!");
+            // Qui puoi aggiungere ulteriori logiche per interagire con l'istanza del modulo
+        }).catch((error) => {
+            console.error("Errore durante il caricamento del modulo WebAssembly:", error);
+        });
     </script>
-  </body>
+</body>
 </html>

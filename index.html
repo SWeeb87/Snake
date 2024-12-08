@@ -2,10 +2,13 @@
 <html>
 <head>
     <title>Snake Game</title>
+    <!-- Includi la libreria JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <style>
         #progressContainer {
             width: 100%;
             background-color: #ddd;
+            margin-bottom: 10px;
         }
         #progressBar {
             width: 0;
@@ -24,43 +27,60 @@
     </div>
     <div id="unityContainer" style="width: 800px; height: 600px; margin-top: 20px;"></div>
 
+    <!-- Script principale -->
     <script>
-        async function loadAndDecompressFiles() {
-            // URL dei file
-            const buildZipUrl = "https://github.com/SWeeb87/Snake/releases/download/1.0/Build.zip";
-            const templateDataUrl = "https://github.com/SWeeb87/Snake/releases/download/1.0/TemplateData.zip";
-            
-            // Mostra una barra di progresso
-            let progress = 0;
-            const progressBar = document.getElementById('progressBar');
+        async function downloadAndDecompressZip(url, progressCallback) {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const zip = await JSZip.loadAsync(blob);
 
-            // Simulazione di decompressione e caricamento dei file
-            function updateProgressBar(percentage) {
-                progress = percentage;
-                progressBar.style.width = `${progress}%`;
-                progressBar.textContent = `${progress}%`;
+            const totalFiles = Object.keys(zip.files).length;
+            let processedFiles = 0;
+
+            for (const filename in zip.files) {
+                const file = zip.files[filename];
+                if (!file.dir) {
+                    const content = await file.async("blob");
+                    // Simula il salvataggio o utilizza il contenuto in base alle necessità.
+
+                    // Aggiorna la barra di progresso
+                    processedFiles++;
+                    const percentage = Math.floor((processedFiles / totalFiles) * 100);
+                    progressCallback(percentage);
+                }
             }
-
-            // Scarica i file e decomprimili (simulato)
-            updateProgressBar(30);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulazione di un download
-            updateProgressBar(60);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulazione di un download
-
-            // Caricamento e inizializzazione di Unity
-            updateProgressBar(100);
-            createUnityInstance(document.querySelector("#unityContainer"), {
-                dataUrl: "Build/Snake Build.data",
-                frameworkUrl: "Build/Snake Build.framework.js",
-                codeUrl: "Build/Snake Build.wasm"
-            }).then((unityInstance) => {
-                console.log("Unity Game Loaded Successfully");
-            }).catch((error) => {
-                console.error("Failed to load Unity game:", error);
-            });
         }
 
-        loadAndDecompressFiles();
+        async function loadAndInitializeGame() {
+            const buildZipUrl = "https://github.com/SWeeb87/Snake/releases/download/1.0/Build.zip";
+            const templateDataZipUrl = "https://github.com/SWeeb87/Snake/releases/download/1.0/TemplateData.zip";
+
+            // Decompressione dei file
+            await downloadAndDecompressZip(buildZipUrl, (progress) => {
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                document.getElementById('progressBar').textContent = `${progress}%`;
+            });
+
+            // Decompressione di TemplateData
+            await downloadAndDecompressZip(templateDataZipUrl, (progress) => {
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                document.getElementById('progressBar').textContent = `${progress}%`;
+            });
+
+            // Caricamento e inizializzazione di Unity
+            try {
+                const unityInstance = await createUnityInstance(document.querySelector("#unityContainer"), {
+                    dataUrl: "Build/Snake Build.data",
+                    frameworkUrl: "Build/Snake Build.framework.js",
+                    codeUrl: "Build/Snake Build.wasm"
+                });
+                console.log("Unity Game Loaded Successfully");
+            } catch (error) {
+                console.error("Failed to load Unity game:", error);
+            }
+        }
+
+        loadAndInitializeGame();
     </script>
 </body>
 </html>

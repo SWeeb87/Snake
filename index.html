@@ -6,6 +6,10 @@
 </head>
 <body>
     <h2>Loading Snake Game...</h2>
+    <div id="progressContainer" style="width: 100%; background-color: #f3f3f3; border: 1px solid #ccc; padding: 5px; margin-bottom: 20px;">
+        <div id="progressBar" style="height: 30px; width: 0%; background-color: #4caf50; text-align: center; color: white;"></div>
+    </div>
+    <p id="progressText">Starting download...</p>
     <div id="unityContainer" style="width: 800px; height: 600px;"></div>
 
     <script>
@@ -13,7 +17,40 @@
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to download the zip file');
 
-            const arrayBuffer = await response.arrayBuffer();
+            const contentLength = response.headers.get('content-length');
+            const totalSize = parseInt(contentLength, 10);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let downloadedBytes = 0;
+
+            const updateProgress = (chunk) => {
+                downloadedBytes += chunk.length;
+                const percentage = (downloadedBytes / totalSize) * 100;
+                document.getElementById('progressBar').style.width = percentage + '%';
+                document.getElementById('progressText').innerText = `Download progress: ${Math.round(percentage)}%`;
+            };
+
+            const stream = new ReadableStream({
+                start(controller) {
+                    function push() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                controller.close();
+                                return;
+                            }
+                            updateProgress(value);
+                            controller.enqueue(value);
+                            push();
+                        }).catch(err => {
+                            console.error('Stream reading error:', err);
+                        });
+                    }
+                    push();
+                }
+            });
+
+            const responseStream = new Response(stream);
+            const arrayBuffer = await responseStream.arrayBuffer();
             const zip = await JSZip.loadAsync(arrayBuffer);
 
             // Estrai i file nella cartella di destinazione

@@ -24,36 +24,46 @@
       </div>
     </div>
     <script>
-      async function loadWasm() {
-        const chunkCount = 2;  // Modifica questo valore con il numero di parti
-        let wasmParts = [];
-        
-        for (let i = 0; i < chunkCount; i++) {
-          const response = await fetch(`Build/Snake Build.wasm.part${i}`);
-          if (!response.ok) {
-            throw new Error(`Errore durante il caricamento della parte ${i}`);
-          }
-          const chunk = await response.arrayBuffer();
-          wasmParts.push(new Uint8Array(chunk));
-        }
+async function loadWasm() {
+  const chunkCount = 2;  // Modifica questo valore con il numero di parti
+  let wasmParts = [];
+  
+  for (let i = 0; i < chunkCount; i++) {
+    const response = await fetch(`Build/Snake Build.wasm.part${i}`);
+    if (!response.ok) {
+      throw new Error(`Errore durante il caricamento della parte ${i}`);
+    }
+    const chunk = await response.arrayBuffer();
+    wasmParts.push(new Uint8Array(chunk));
+  }
 
-        // Combina tutte le parti in un'unica Uint8Array
-        let totalSize = wasmParts.reduce((sum, part) => sum + part.length, 0);
-        let combinedWasm = new Uint8Array(totalSize);
-        let offset = 0;
-        for (let part of wasmParts) {
-          combinedWasm.set(part, offset);
-          offset += part.length;
-        }
+  // Combina tutte le parti in un'unica Uint8Array
+  let totalSize = wasmParts.reduce((sum, part) => sum + part.length, 0);
+  let combinedWasm = new Uint8Array(totalSize);
+  let offset = 0;
+  for (let part of wasmParts) {
+    combinedWasm.set(part, offset);
+    offset += part.length;
+  }
 
-        // Compila il modulo WebAssembly
-        const wasmModule = await WebAssembly.compile(combinedWasm);
-        // Crea un oggetto di importazione vuoto
-        const imports = {};
-        const wasmInstance = await WebAssembly.instantiate(wasmModule, imports);
-        
-        return wasmInstance;
-      }
+  // Definisci l'oggetto di importazione
+  const imports = {
+    env: {
+      // Aggiungi qui le importazioni necessarie per il tuo modulo, ad esempio:
+      memory: new WebAssembly.Memory({ initial: 256, maximum: 256 }),
+      table: new WebAssembly.Table({ initial: 0, element: 'anyfunc' }),
+      // Altre funzioni richieste dal modulo possono essere aggiunte qui
+    }
+  };
+
+  // Compila il modulo WebAssembly
+  const wasmModule = await WebAssembly.compile(combinedWasm);
+  // Crea l'istanza del modulo WebAssembly con le importazioni
+  const wasmInstance = await WebAssembly.instantiate(wasmModule, imports);
+  
+  return wasmInstance;
+}
+
 
       var canvas = document.querySelector("#unity-canvas");
       var config = {

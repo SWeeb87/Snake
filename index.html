@@ -2,31 +2,57 @@
 <html>
 <head>
     <title>Snake Game</title>
-    <script>
-        // URL alla release su GitHub per scaricare la cartella di build
-        const releaseBaseUrl = "https://github.com/SWeeb87/Snake/releases/download/1.0/Snake.Build.zip";
-        
-        // Costruisci gli URL per i file della build
-        const dataUrl = releaseBaseUrl + "Build/Snake%20Build.data",
-        const frameworkUrl = releaseBaseUrl + "Build/Snake%20Build.framework.js",
-        const codeUrl = releaseBaseUrl + "Build/Snake%20Build.wasm";
-
-        // Imposta la configurazione per caricare il gioco
-        const buildConfig = {
-            dataUrl: dataUrl,
-            frameworkUrl: frameworkUrl,
-            codeUrl: codeUrl
-        };
-
-        // Carica l'istanza di Unity
-        createUnityInstance(document.querySelector("#unityContainer"), buildConfig).then((unityInstance) => {
-            console.log("Unity Game Loaded Successfully");
-        }).catch((error) => {
-            console.error("Failed to load Unity game:", error);
-        });
-    </script>
+    <script src="https://stuk.github.io/jszip/dist/jszip.min.js"></script>
 </head>
 <body>
+    <h2>Loading Snake Game...</h2>
     <div id="unityContainer" style="width: 800px; height: 600px;"></div>
+
+    <script>
+        async function downloadAndExtractZip(url, targetFolder) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to download the zip file');
+
+            const arrayBuffer = await response.arrayBuffer();
+            const zip = await JSZip.loadAsync(arrayBuffer);
+
+            // Estrai i file nella cartella di destinazione
+            const folder = zip.folder(targetFolder);
+            for (const [filename, file] of Object.entries(folder.files)) {
+                if (!file.dir) {
+                    const content = await file.async('blob');
+                    const blobURL = URL.createObjectURL(content);
+                    // Crea un link per scaricare il file decompresso
+                    const a = document.createElement('a');
+                    a.href = blobURL;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            }
+            alert('Game files have been extracted and are ready to play!');
+        }
+
+        // URL alla release zip del tuo repository
+        const zipFileURL = 'https://github.com/tuo-username/tuo-repo/releases/download/v1.0.0/Snake%20Build.zip';
+
+        downloadAndExtractZip(zipFileURL, 'Snake Build').then(() => {
+            // Carica il gioco Unity
+            const buildConfig = {
+                dataUrl: 'Snake%20Build/Build/Snake%20Build.data',
+                frameworkUrl: 'Snake%20Build/Build/Snake%20Build.framework.js',
+                codeUrl: 'Snake%20Build/Build/Snake%20Build.wasm'
+            };
+
+            createUnityInstance(document.querySelector("#unityContainer"), buildConfig).then((unityInstance) => {
+                console.log("Unity Game Loaded Successfully");
+            }).catch((error) => {
+                console.error("Failed to load Unity game:", error);
+            });
+        }).catch(error => {
+            console.error('Error:', error);
+        });
+    </script>
 </body>
 </html>

@@ -2,89 +2,65 @@
 <html>
 <head>
     <title>Snake Game</title>
-    <script src="https://stuk.github.io/jszip/dist/jszip.min.js"></script>
+    <style>
+        #progressContainer {
+            width: 100%;
+            background-color: #ddd;
+        }
+        #progressBar {
+            width: 0;
+            height: 30px;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+            background-color: #4caf50;
+        }
+    </style>
 </head>
 <body>
-    <h2>Loading Snake Game...</h2>
-    <div id="progressContainer" style="width: 100%; background-color: #f3f3f3; border: 1px solid #ccc; padding: 5px; margin-bottom: 20px;">
-        <div id="progressBar" style="height: 30px; width: 0%; background-color: #4caf50; text-align: center; color: white;"></div>
+    <h1>Loading Snake Game...</h1>
+    <div id="progressContainer">
+        <div id="progressBar">0%</div>
     </div>
-    <p id="progressText">Starting download...</p>
-    <div id="unityContainer" style="width: 800px; height: 600px;"></div>
+    <div id="unityContainer" style="width: 800px; height: 600px; margin-top: 20px;"></div>
 
     <script>
-        async function downloadAndExtractZip(url, targetFolder) {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Failed to download the zip file');
+        async function loadAndDecompressFiles() {
+            // URL dei file
+            const buildZipUrl = "https://github.com/SWeeb87/Snake/releases/download/1.0/Build.zip";
+            const templateDataUrl = "https://github.com/SWeeb87/Snake/releases/download/1.0/TemplateData.zip";
+            
+            // Mostra una barra di progresso
+            let progress = 0;
+            const progressBar = document.getElementById('progressBar');
 
-            const contentLength = response.headers.get('content-length');
-            if (!contentLength) {
-                throw new Error('Content length not available. Unable to show progress.');
+            // Simulazione di decompressione e caricamento dei file
+            function updateProgressBar(percentage) {
+                progress = percentage;
+                progressBar.style.width = `${progress}%`;
+                progressBar.textContent = `${progress}%`;
             }
 
-            const totalSize = parseInt(contentLength, 10);
-            let downloadedBytes = 0;
+            // Scarica i file e decomprimili (simulato)
+            updateProgressBar(30);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulazione di un download
+            updateProgressBar(60);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulazione di un download
 
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            const chunks = [];
-            let done = false;
-
-            while (!done) {
-                const { value, done: readerDone } = await reader.read();
-                done = readerDone;
-                if (value) {
-                    chunks.push(value);
-                    downloadedBytes += value.length;
-
-                    // Calcola la percentuale di progresso
-                    const percentage = (downloadedBytes / totalSize) * 100;
-                    document.getElementById('progressBar').style.width = percentage + '%';
-                    document.getElementById('progressText').innerText = `Download progress: ${Math.round(percentage)}%`;
-                }
-            }
-
-            // Unisci tutti i pezzi in un array buffer
-            const fullArrayBuffer = new Uint8Array(chunks.reduce((acc, chunk) => acc.concat(Array.from(chunk)), []));
-            const zip = await JSZip.loadAsync(fullArrayBuffer);
-
-            // Estrai i file nella cartella di destinazione
-            const folder = zip.folder(targetFolder);
-            for (const [filename, file] of Object.entries(folder.files)) {
-                if (!file.dir) {
-                    const content = await file.async('blob');
-                    const blobURL = URL.createObjectURL(content);
-                    // Crea un link per scaricare il file decompresso
-                    const a = document.createElement('a');
-                    a.href = blobURL;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                }
-            }
-            alert('Game files have been extracted and are ready to play!');
-        }
-
-        // URL alla release zip del tuo repository
-        const zipFileURL = 'https://github.com/SWeeb87/Snake/releases/download/1.0/Snake.Build.zip';
-
-        downloadAndExtractZip(zipFileURL, 'Snake Build').then(() => {
-            // Carica il gioco Unity
-            const buildConfig = {
-                dataUrl: 'Snake%20Build/Build/Snake%20Build.data',
-                frameworkUrl: 'Snake%20Build/Build/Snake%20Build.framework.js',
-                codeUrl: 'Snake%20Build/Build/Snake%20Build.wasm'
-            };
-
-            createUnityInstance(document.querySelector("#unityContainer"), buildConfig).then((unityInstance) => {
+            // Caricamento e inizializzazione di Unity
+            updateProgressBar(100);
+            createUnityInstance(document.querySelector("#unityContainer"), {
+                dataUrl: "Build/Snake Build.data",
+                frameworkUrl: "Build/Snake Build.framework.js",
+                codeUrl: "Build/Snake Build.wasm"
+            }).then((unityInstance) => {
                 console.log("Unity Game Loaded Successfully");
             }).catch((error) => {
                 console.error("Failed to load Unity game:", error);
             });
-        }).catch(error => {
-            console.error('Error:', error);
-        });
+        }
+
+        loadAndDecompressFiles();
     </script>
 </body>
 </html>

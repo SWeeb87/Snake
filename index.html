@@ -24,21 +24,30 @@
       </div>
     </div>
     <script>
-      async function fetchWasmParts(baseUrl, numParts) {
-        const parts = [];
-        for (let i = 0; i < numParts; i++) {
-          const response = await fetch(`${baseUrl}/Snake Build.wasm.part${i}`);
-          if (!response.ok) {
-            throw new Error(`Errore nel caricamento della parte ${i}: ${response.statusText}`);
-          }
-          const buffer = await response.arrayBuffer();
-          parts.push(buffer);
-        }
-        return new Uint8Array(parts.reduce((acc, part) => {
-          acc.push(...Array.from(new Uint8Array(part)));
-          return acc;
-        }, []));
-      }
+async function fetchWasmParts(baseUrl, numParts) {
+  const parts = [];
+  for (let i = 0; i < numParts; i++) {
+    const response = await fetch(`${baseUrl}/Snake Build.wasm.part${i}`);
+    if (!response.ok) {
+      throw new Error(`Errore nel caricamento della parte ${i}: ${response.statusText}`);
+    }
+    const buffer = await response.arrayBuffer();
+    parts.push(buffer);
+  }
+
+  // Crea un array finale per contenere tutti i dati
+  const totalLength = parts.reduce((sum, part) => sum + part.byteLength, 0);
+  const combinedArray = new Uint8Array(totalLength);
+
+  let offset = 0;
+  for (const part of parts) {
+    combinedArray.set(new Uint8Array(part), offset);
+    offset += part.byteLength;
+  }
+
+  return combinedArray;
+}
+
 
       async function loadWasm() {
         try {

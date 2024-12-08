@@ -7,8 +7,6 @@
 </head>
 <body>
     <script type="module">
-        import { WASI } from 'https://cdn.jsdelivr.net/npm/wasi@latest/dist/wasi.min.js';
-
         async function loadWasm() {
             const chunkCount = 2;  // Modifica questo valore con il numero di parti
             let wasmParts = [];
@@ -32,30 +30,14 @@
                 offset += part.length;
             }
 
-            // Crea un'istanza di WASI
-            const wasi = new WASI({
-                args: [],
-                env: {},
-                stdin: process.stdin,
-                stdout: process.stdout,
-                stderr: process.stderr,
-            });
-
-            // Crea l'oggetto di importazione con WASI
-            const imports = {
-                wasi_snapshot_preview1: wasi.wasiImport,
+            // Compila e istanzia il modulo WebAssembly senza l'oggetto imports di WASI
+            const wasmModule = await WebAssembly.compile(combinedWasm);
+            const wasmInstance = await WebAssembly.instantiate(wasmModule, {
                 env: {
                     memory: new WebAssembly.Memory({ initial: 256, maximum: 256 }),
                     table: new WebAssembly.Table({ initial: 0, element: 'anyfunc' }),
                 }
-            };
-
-            // Compila e istanzia il modulo WebAssembly
-            const wasmModule = await WebAssembly.compile(combinedWasm);
-            const wasmInstance = await WebAssembly.instantiate(wasmModule, imports);
-
-            // Avvia WASI
-            wasi.start(wasmInstance);
+            });
 
             return wasmInstance;
         }

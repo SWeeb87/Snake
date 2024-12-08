@@ -1,3 +1,0 @@
-<FilesMatch "\.(wasm|data|js)$">
-    AddEncoding gzip .gz
-</FilesMatch>

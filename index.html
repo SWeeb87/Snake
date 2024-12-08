@@ -48,7 +48,9 @@
 
         // Compila il modulo WebAssembly
         const wasmModule = await WebAssembly.compile(combinedWasm);
-        const wasmInstance = await WebAssembly.instantiate(wasmModule);
+        // Crea un oggetto di importazione vuoto
+        const imports = {};
+        const wasmInstance = await WebAssembly.instantiate(wasmModule, imports);
         
         return wasmInstance;
       }
